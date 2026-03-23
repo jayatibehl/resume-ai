@@ -44,12 +44,11 @@ export default function Login() {
       // LOGIN FLOW
       if (data.role) {
 
-        //  Store auth data
         localStorage.setItem("token", data.token);
         localStorage.setItem("role", data.role);
         localStorage.setItem("name", data.name);
+        localStorage.setItem("email", data.email);
 
-        //  Redirect based on role
         if (data.role === "candidate") {
           navigate("/candidate");
         } else {
@@ -103,6 +102,22 @@ export default function Login() {
             setForm({ ...form, password: e.target.value })
           }
         />
+
+        {/* ✅ FORGOT PASSWORD */}
+        {!isRegister && (
+          <p
+            style={{
+              textAlign: "right",
+              marginTop: "6px",
+              fontSize: "14px",
+              color: "#5b6cff",
+              cursor: "pointer"
+            }}
+            onClick={() => alert("Forgot password feature coming soon")}
+          >
+            Forgot Password?
+          </p>
+        )}
 
         {isRegister && (
           <select

@@ -1,17 +1,22 @@
-export const uploadResume = async (file) => {
+import API_BASE_URL from "./api";
 
+export const uploadResume = async (file) => {
   const formData = new FormData();
-  formData.append("file", file);   // 🔥 IMPORTANT → backend expects "file"
+  formData.append("file", file); // backend expects "file"
 
   try {
-    const res = await fetch("http://127.0.0.1:5000/api/resume/upload", {
+    const res = await fetch(`${API_BASE_URL}/api/resume/upload`, {
       method: "POST",
       body: formData,
     });
 
-    return await res.json();
+    if (!res.ok) {
+      throw new Error("Upload failed");
+    }
 
+    return await res.json();
   } catch (err) {
+    console.error("Resume upload error:", err);
     return { error: "Backend not connected" };
   }
 };

@@ -8,31 +8,26 @@ export default function RecruiterDashboard() {
   const [description, setDescription] = useState("");
 
   const [jobs, setJobs] = useState([]);
-  const [matches, setMatches] = useState([]);
+  const [candidates, setCandidates] = useState([]);
 
-  // LOAD JOBS FROM DATABASE
+  const [activeTab, setActiveTab] = useState("jobs");
+  const [selectedJobId, setSelectedJobId] = useState(null);
+
+  const [search, setSearch] = useState("");
+
+  // LOAD JOBS
   useEffect(() => {
-
     const loadJobs = async () => {
-
       try {
-
         const res = await fetch("http://127.0.0.1:5000/api/jobs/all");
-
         const data = await res.json();
-
         setJobs(data);
-
       } catch {
         console.log("Could not load jobs");
       }
-
     };
-
     loadJobs();
-
   }, []);
-
 
   // POST JOB
   const postJob = async () => {
@@ -50,8 +45,8 @@ export default function RecruiterDashboard() {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          title: title,
-          description: description,
+          title,
+          description,
           recruiter_email: "recruiter@test.com"
         })
       });
@@ -60,12 +55,10 @@ export default function RecruiterDashboard() {
 
       if (data.message) {
 
-        // Reload jobs from DB
         const jobsRes = await fetch("http://127.0.0.1:5000/api/jobs/all");
         const jobsData = await jobsRes.json();
 
         setJobs(jobsData);
-
         setTitle("");
         setDescription("");
 
@@ -76,27 +69,38 @@ export default function RecruiterDashboard() {
     } catch {
       alert("Backend not connected");
     }
-
   };
 
+  // 🔥 VIEW MATCHES → SWITCH TAB
+  const handleViewMatches = (jobId) => {
+    setSelectedJobId(jobId);
+    setActiveTab("candidates");
+    fetchCandidates(jobId);
+  };
 
-  // MATCH CANDIDATES (future)
-  const getMatches = async (jobId) => {
+  // 🔥 FETCH CANDIDATES
+  const fetchCandidates = async (jobId) => {
 
     try {
-
-      const res = await fetch(`http://127.0.0.1:5000/api/jobs/match/${jobId}`);
+      const res = await fetch("http://127.0.0.1:5000/api/jobs/matched-candidates", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ job_id: jobId })
+      });
 
       const data = await res.json();
-
-      setMatches(data);
+      setCandidates(data);
 
     } catch {
-      alert("Match service not available yet");
+      alert("Error loading candidates");
     }
-
   };
 
+  const filteredJobs = jobs.filter(j =>
+    j.title.toLowerCase().includes(search.toLowerCase())
+  );
 
   return (
     <div className="dashboard-container">
@@ -108,11 +112,17 @@ export default function RecruiterDashboard() {
 
         <nav>
 
-          <div className="nav-item active">
+          <div
+            className={`nav-item ${activeTab === "jobs" ? "active" : ""}`}
+            onClick={() => setActiveTab("jobs")}
+          >
             <Briefcase size={20}/> Job Posts
           </div>
 
-          <div className="nav-item">
+          <div
+            className={`nav-item ${activeTab === "candidates" ? "active" : ""}`}
+            onClick={() => setActiveTab("candidates")}
+          >
             <Users size={20}/> Candidates
           </div>
 
@@ -123,96 +133,61 @@ export default function RecruiterDashboard() {
 
       <main className="main-content">
 
-        {/* TOP STATS */}
-        <div className="results-grid">
+        {/* ================= JOB POSTS TAB ================= */}
+        {activeTab === "jobs" && (
+          <>
 
-          <section className="stat-card">
-            <h3>Total Jobs</h3>
-            <div className="big-number">{jobs.length}</div>
-          </section>
+            {/* STATS */}
+            <div className="results-grid">
+              <section className="stat-card">
+                <h3>Total Jobs</h3>
+                <div className="big-number">{jobs.length}</div>
+              </section>
+            </div>
 
-          <section className="stat-card">
-            <h3>Matched Candidates</h3>
-            <div className="big-number">{matches.length}</div>
-          </section>
+            {/* POST JOB */}
+            <div className="upload-card" style={{ marginTop: 30 }}>
 
-        </div>
+              <h2><PlusCircle size={22}/> Post a Job</h2>
 
+              <input
+                className="input-box"
+                placeholder="Job Title"
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+              />
 
-        {/* POST JOB */}
-        <div className="upload-card" style={{ marginTop: 30 }}>
+              <textarea
+                className="input-box"
+                placeholder="Job Description"
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                rows="4"
+              />
 
-          <h2><PlusCircle size={22}/> Post a Job</h2>
-
-          <p>Enter job details and let AI find the best candidates</p>
-
-          <input
-            className="input-box"
-            placeholder="Job Title"
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-          />
-
-          <textarea
-            className="input-box"
-            placeholder="Job Description (skills, experience, responsibilities)"
-            value={description}
-            onChange={e => setDescription(e.target.value)}
-            rows="4"
-          />
-
-          <button className="primary-btn" onClick={postJob}>
-            Post Job
-          </button>
-
-        </div>
-
-
-        {/* JOB LIST */}
-        <h2 style={{ marginTop: 40 }}>Your Job Posts</h2>
-
-        <div className="results-grid">
-
-          {jobs.map(job => (
-
-            <section key={job.id} className="stat-card">
-
-              <h3>{job.title}</h3>
-
-              <p>{job.description}</p>
-
-              <button
-                className="secondary-btn"
-                onClick={() => getMatches(job.id)}
-              >
-                <Search size={16}/> View Matches
+              <button className="primary-btn" onClick={postJob}>
+                Post Job
               </button>
 
-            </section>
+            </div>
 
-          ))}
-
-        </div>
-
-
-        {/* MATCHED CANDIDATES */}
-        {matches.length > 0 && (
-
-          <>
-            <h2 style={{ marginTop: 40 }}>AI-Matched Candidates</h2>
+            {/* JOB LIST */}
+            <h2 style={{ marginTop: 40 }}>Your Job Posts</h2>
 
             <div className="results-grid">
 
-              {matches.map((m, i) => (
+              {jobs.map(job => (
 
-                <section key={i} className="stat-card">
+                <section key={job.id} className="stat-card">
 
-                  <h3>Candidate #{i + 1}</h3>
+                  <h3>{job.title}</h3>
+                  <p>{job.description}</p>
 
-                  <p><b>Match Score:</b> {(m.match_score * 100).toFixed(1)}%</p>
-
-                  <button className="secondary-btn">
-                    Shortlist
+                  <button
+                    className="secondary-btn"
+                    onClick={() => handleViewMatches(job.id)}
+                  >
+                    <Search size={16}/> View Matches
                   </button>
 
                 </section>
@@ -220,6 +195,87 @@ export default function RecruiterDashboard() {
               ))}
 
             </div>
+
+          </>
+        )}
+
+
+        {/* ================= CANDIDATES TAB ================= */}
+        {activeTab === "candidates" && (
+          <>
+
+            <h2>Select Job</h2>
+
+            <input
+              type="text"
+              placeholder="Search jobs..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="input-box"
+            />
+
+            <div style={{ marginTop: 15 }}>
+
+              {filteredJobs.map(job => (
+                <div
+                  key={job.id}
+                  onClick={() => fetchCandidates(job.id)}
+                  style={{
+                    padding: "10px",
+                    cursor: "pointer",
+                    borderBottom: "1px solid rgba(255,255,255,0.1)"
+                  }}
+                >
+                  {job.title}
+                </div>
+              ))}
+
+            </div>
+
+
+            {/* CANDIDATES */}
+            <div className="results-grid" style={{ marginTop: 30 }}>
+
+              {candidates.length === 0 && (
+                <p>No candidates found</p>
+              )}
+
+              {candidates.map((c, i) => (
+
+                <section key={i} className="stat-card">
+
+                  <h3>{c.name}</h3>
+
+                  <p>{c.email}</p>
+
+                  <div className="big-number">
+                    {c.match_score}%
+                  </div>
+
+                  <a
+                    href={`http://127.0.0.1:5000/uploads/${c.resume}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: "#5b6cff" }}
+                  >
+                    View Resume
+                  </a>
+
+                  <br />
+
+                  <a
+                    href={`mailto:${c.email}`}
+                    style={{ color: "#00d084" }}
+                  >
+                    Contact
+                  </a>
+
+                </section>
+
+              ))}
+
+            </div>
+
           </>
         )}
 

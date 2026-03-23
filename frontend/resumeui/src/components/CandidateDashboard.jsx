@@ -11,22 +11,39 @@ export default function CandidateDashboard() {
   const [skills, setSkills] = useState([]);
   const [experience, setExperience] = useState("");
 
-  const [resumeText, setResumeText] = useState("");
-
   const [skillGap, setSkillGap] = useState(null);
-  const [selectedJob, setSelectedJob] = useState(null);
 
   const [activeTab, setActiveTab] = useState("analysis");
 
+  const resumeName = localStorage.getItem("resume_name");
+
+
+  /* ------------------ UPLOAD ------------------ */
 
   const handleUpload = async () => {
 
     if (!file) return;
 
+    // ✅ FIX: GET USER DATA
+    const email = localStorage.getItem("email");
+    const name = localStorage.getItem("name");
+
+    console.log("EMAIL:", email);
+    console.log("NAME:", name);
+
+    if (!email || !name) {
+      alert("User not logged in properly");
+      return;
+    }
+
     setStep("analyzing");
 
     const formData = new FormData();
     formData.append("file", file);
+
+    // ✅ FIX: SEND USER DATA TO BACKEND
+    formData.append("email", email);
+    formData.append("name", name);
 
     try {
 
@@ -43,6 +60,14 @@ export default function CandidateDashboard() {
         return;
       }
 
+      // ✅ FIX 1: ALWAYS STORE CORRECT TEXT
+      localStorage.setItem("resume_text", data.resume_text || "");
+      localStorage.setItem("resume_name", file.name);
+
+      if (data.matching_jobs) {
+        localStorage.setItem("matched_jobs", JSON.stringify(data.matching_jobs));
+      }
+
       setRoles(data.recommended_roles || []);
       setJobs(data.matching_jobs || []);
 
@@ -50,8 +75,6 @@ export default function CandidateDashboard() {
         setSkills(data.analysis.skills_found || []);
         setExperience(data.analysis.experience_level || "Not specified");
       }
-
-      setResumeText(data.resume_text || "");
 
       setStep("results");
 
@@ -62,9 +85,16 @@ export default function CandidateDashboard() {
   };
 
 
+  /* ------------------ SKILL GAP (FIXED) ------------------ */
+
   const handleJobClick = async (job) => {
 
-    setSelectedJob(job);
+    const storedResume = localStorage.getItem("resume_text");
+
+    if (!storedResume || storedResume.length < 20) {
+      alert("Upload resume first");
+      return;
+    }
 
     try {
 
@@ -74,7 +104,7 @@ export default function CandidateDashboard() {
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          resume_text: resumeText,
+          resume_text: storedResume,
           job_description: job.description
         })
       });
@@ -82,7 +112,6 @@ export default function CandidateDashboard() {
       const data = await res.json();
 
       setSkillGap(data);
-
       setActiveTab("skillgap");
 
     } catch {
@@ -91,10 +120,26 @@ export default function CandidateDashboard() {
   };
 
 
+  /* ------------------ RESET ------------------ */
+
+  const handleReset = () => {
+    localStorage.removeItem("resume_text");
+    localStorage.removeItem("resume_name");
+    localStorage.removeItem("matched_jobs");
+    setFile(null);
+    setStep("upload");
+    setRoles([]);
+    setJobs([]);
+    setSkills([]);
+    setExperience("");
+    setSkillGap(null);
+  };
+
+
   return (
     <main className="main-content">
 
-      {/* UPLOAD SCREEN */}
+      {/* ------------------ UPLOAD ------------------ */}
       {step === "upload" && (
         <div className="upload-card">
 
@@ -118,7 +163,7 @@ export default function CandidateDashboard() {
       )}
 
 
-      {/* ANALYZING */}
+      {/* ------------------ ANALYZING ------------------ */}
       {step === "analyzing" && (
         <div className="upload-card">
           <h3>Analyzing Resume...</h3>
@@ -126,193 +171,163 @@ export default function CandidateDashboard() {
       )}
 
 
-      {/* RESULTS */}
+      {/* ------------------ RESULTS ------------------ */}
       {step === "results" && (
 
         <div className="results-grid">
 
-          {/* Resume Viewer */}
-          <div
-            className="stat-card"
-            style={{
-              gridColumn: "1 / -1",
-              marginBottom: "25px"
-            }}
-          >
+          {/* Resume */}
+          <div className="stat-card" style={{ gridColumn: "1 / -1" }}>
 
             <h3>Uploaded Resume</h3>
 
-            <a
-              href={`http://127.0.0.1:5000/uploads/${file?.name}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                display: "inline-block",
-                marginTop: "10px",
-                padding: "10px 16px",
-                background: "#5b6cff",
-                borderRadius: "8px",
-                textDecoration: "none",
-                color: "white",
-                fontWeight: "500"
-              }}
-            >
-              Open Resume PDF
-            </a>
+            {resumeName ? (
+              <>
+                <a
+                  href={`http://127.0.0.1:5000/uploads/${resumeName}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    display: "inline-block",
+                    marginTop: "10px",
+                    padding: "10px 16px",
+                    background: "#5b6cff",
+                    borderRadius: "8px",
+                    textDecoration: "none",
+                    color: "white",
+                    fontWeight: "500"
+                  }}
+                >
+                  📄 {resumeName}
+                </a>
+
+                <br /><br />
+
+                <button
+                  onClick={handleReset}
+                  style={{
+                    padding: "10px 16px",
+                    background: "#5b6cff",
+                    border: "none",
+                    borderRadius: "8px",
+                    color: "white",
+                    cursor: "pointer"
+                  }}
+                >
+                  Upload Another Resume
+                </button>
+              </>
+            ) : (
+              <p>No resume uploaded</p>
+            )}
 
           </div>
 
 
-          {/* ANALYSIS TAB */}
+          {/* ANALYSIS */}
           {activeTab === "analysis" && (
 
             <>
-
-              {/* Detected Skills */}
               <div className="stat-card">
-
                 <h3>Detected Skills</h3>
 
-                {skills.length === 0 && <p>No skills detected</p>}
-
                 <div className="tag-container">
-
                   {skills.map((s, i) => (
-                    <span key={i} className="tag">
-                      {s}
-                    </span>
+                    <span key={i} className="tag">{s}</span>
                   ))}
-
                 </div>
-
               </div>
 
 
-              {/* Experience */}
               <div className="stat-card">
-
                 <h3>Experience Level</h3>
-
                 <p>{experience}</p>
-
               </div>
 
 
-              {/* AI Suggested Roles */}
+              {/* ROLES */}
               <div className="stat-card">
-
                 <h3>AI Suggested Roles</h3>
 
                 {roles.length === 0 && <p>No roles detected</p>}
 
                 {roles.map((r, i) => (
-
                   <div
                     key={i}
                     style={{
                       display: "flex",
                       justifyContent: "space-between",
-                      padding: "12px 0",
+                      alignItems: "center",
+                      padding: "10px 0",
                       borderBottom: "1px solid rgba(255,255,255,0.08)"
                     }}
                   >
+                    <span className="tag">{r.role}</span>
 
-                    <span>{r.role}</span>
-
-                    <span className="big-number" style={{ fontSize: "22px" }}>
-                      {r.score.toFixed(0)}%
+                    <span style={{ color: "#5b6cff", fontWeight: "600" }}>
+                      {r.score}%
                     </span>
-
                   </div>
-
                 ))}
-
               </div>
-
             </>
-
           )}
 
 
-          {/* JOB MATCHES TAB */}
+          {/* JOB MATCHES */}
           {activeTab === "jobs" && (
-
             <div className="stat-card">
 
-              <h3>Matching Job Descriptions</h3>
-
-              {jobs.length === 0 && <p>No job matches found</p>}
+              <h3>Matching Jobs</h3>
 
               {jobs.map((j, i) => (
-
                 <div
                   key={i}
                   onClick={() => handleJobClick(j)}
-                  style={{
-                    padding: "12px 0",
-                    borderBottom: "1px solid rgba(255,255,255,0.08)",
-                    cursor: "pointer"
-                  }}
+                  style={{ cursor: "pointer", marginBottom: "10px" }}
                 >
-
                   <h4>{j.title}</h4>
 
-                  <p>Match Score: {(j.match_score * 100).toFixed(0)}%</p>
-
+                  <p>Match: {Number(j.match_score).toFixed(2)}%</p>
                 </div>
-
               ))}
 
             </div>
-
           )}
 
 
-          {/* SKILL GAP TAB */}
+          {/* SKILL GAP */}
           {activeTab === "skillgap" && skillGap && (
-
             <div className="stat-card">
 
               <h3>Skill Gap Analysis</h3>
 
-              <h4>Your Skills</h4>
+              <h4>Match Score: {skillGap.match_score}%</h4>
 
+              <h4>Matched Skills</h4>
               <div className="tag-container">
-
-                {skillGap.resume_skills.map((s,i)=>(
+                {skillGap.matched_skills?.map((s, i) => (
                   <span key={i} className="tag">{s}</span>
                 ))}
-
               </div>
 
-
-              <h4 style={{marginTop:"20px"}}>Required Skills</h4>
-
+              <h4>Missing Skills</h4>
               <div className="tag-container">
-
-                {skillGap.required_skills.map((s,i)=>(
-                  <span key={i} className="tag">{s}</span>
+                {skillGap.missing_skills?.map((s, i) => (
+                  <span
+                    key={i}
+                    className="tag"
+                    style={{ background: "#ff4d4f" }}
+                  >
+                    {s}
+                  </span>
                 ))}
-
-              </div>
-
-
-              <h4 style={{marginTop:"20px"}}>Missing Skills</h4>
-
-              <div className="tag-container">
-
-                {skillGap.missing_skills.map((s,i)=>(
-                  <span key={i} className="tag">{s}</span>
-                ))}
-
               </div>
 
             </div>
-
           )}
 
         </div>
-
       )}
 
     </main>

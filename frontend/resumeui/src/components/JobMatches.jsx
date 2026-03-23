@@ -1,56 +1,71 @@
-import { useState } from "react";
-import { matchJobs } from "../services/jobService";
+import { useEffect, useState } from "react";
 
 export default function JobMatches() {
 
-  const [file, setFile] = useState(null);
   const [matches, setMatches] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
-  const handleMatch = async () => {
+  const resumeName = localStorage.getItem("resume_name");
 
-    if (!file) {
-      alert("Upload resume first");
-      return;
+  useEffect(() => {
+    const storedJobs = localStorage.getItem("matched_jobs");
+
+    if (storedJobs) {
+      setMatches(JSON.parse(storedJobs));
     }
+  }, []);
 
-    setLoading(true);
-    setError("");
-
-    const data = await matchJobs(file);
-
-    if (data.error) {
-      setError(data.error);
-      setLoading(false);
-      return;
-    }
-
-    setMatches(data.job_matches || []);
-    setLoading(false);
+  const handleReupload = () => {
+    localStorage.clear();
+    window.location.reload(); // simple reset
   };
 
   return (
     <div className="main-content">
 
       <div className="upload-card">
-
         <h2>Match Resume With Job Openings</h2>
 
-        <div className="drag-area">
-          <input
-            type="file"
-            accept=".pdf"
-            onChange={(e) => setFile(e.target.files[0])}
-          />
-        </div>
+        {!resumeName ? (
+          <p style={{ color: "red" }}>
+            Please upload resume in Analysis tab first.
+          </p>
+        ) : (
+          <>
+            <a
+              href={`http://127.0.0.1:5000/uploads/${resumeName}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                display: "inline-block",
+                marginTop: "10px",
+                padding: "8px 14px",
+                background: "#5b6cff",
+                borderRadius: "6px",
+                textDecoration: "none",
+                color: "white",
+                fontSize: "14px"
+              }}
+            >
+              📄 {resumeName}
+            </a>
 
-        <button className="primary-btn" onClick={handleMatch}>
-          {loading ? "Matching..." : "Find Job Matches"}
-        </button>
+            <br /><br />
 
-        {error && <p style={{color:"red"}}>{error}</p>}
-
+            <button
+              onClick={handleReupload}
+              style={{
+                padding: "8px 14px",
+                background: "#ff4d4f",
+                border: "none",
+                borderRadius: "6px",
+                color: "white",
+                cursor: "pointer"
+              }}
+            >
+              Upload Another Resume
+            </button>
+          </>
+        )}
       </div>
 
       {matches.length > 0 && (
@@ -60,10 +75,15 @@ export default function JobMatches() {
             <div key={i} className="stat-card">
 
               <h3>{job.title}</h3>
-              <p>{job.company}</p>
+
+              <p>
+                {job.description
+                  ? job.description.substring(0, 120) + "..."
+                  : ""}
+              </p>
 
               <div className="big-number">
-                {job.score}%
+              {Number(job.match_score).toFixed(2)}%
               </div>
 
             </div>
