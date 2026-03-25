@@ -3,6 +3,8 @@ import { useState } from "react";
 import "./App.css";
 
 import Login from "./components/Login";
+import ForgotPassword from "./components/ForgotPassword"; // Naya component import
+import ResetPassword from "./components/ResetPassword";   // Naya component import
 import CandidateDashboard from "./components/CandidateDashboard";
 import RecruiterDashboard from "./components/RecruiterDashboard";
 import JobMatches from "./components/JobMatches";
@@ -11,7 +13,6 @@ import SkillGap from "./components/SkillGap";
 
 /* ------------------ Candidate Layout ------------------ */
 function CandidateLayout() {
-
   const [activeTab, setActiveTab] = useState("analysis");
 
   const logout = () => {
@@ -21,10 +22,8 @@ function CandidateLayout() {
 
   return (
     <div className="dashboard-container">
-
       {/* Sidebar */}
       <aside className="sidebar">
-
         <div className="logo">
           Resume<span>AI</span>
         </div>
@@ -53,34 +52,29 @@ function CandidateLayout() {
         <div className="nav-item logout" onClick={logout}>
           Logout
         </div>
-
       </aside>
 
       {/* Main Content */}
       <main className="main-content">
-
         {activeTab === "analysis" && <CandidateDashboard />}
-
         {activeTab === "jobs" && <JobMatches />}
-
         {activeTab === "skillgap" && <SkillGap />}
-
       </main>
-
     </div>
   );
 }
 
 /* ------------------ Main App ------------------ */
 function App() {
-
   return (
     <Router>
-
       <Routes>
-
-        {/* Login */}
+        {/* Public Routes */}
         <Route path="/" element={<Login />} />
+        
+        {/* Dedicated Password Recovery Pages */}
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Candidate Dashboard */}
         <Route
@@ -104,9 +98,7 @@ function App() {
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" />} />
-
       </Routes>
-
     </Router>
   );
 }
